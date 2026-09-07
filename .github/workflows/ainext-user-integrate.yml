@@ -22,6 +22,7 @@ jobs:
               '<script src="./ainext-user-data.js"></script>',
               '<script src="./ainext-user-admin.js"></script>',
               '<script src="./ainext-runtime-hardening.js"></script>',
+              '<script src="./ainext-history-launcher.js"></script>',
           ]
           for tag in tags:
               if tag not in s:
@@ -32,7 +33,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html ainext-user-data.js ainext-user-admin.js ainext-runtime-hardening.js .github/workflows/ainext-user-integrate.yml
+          git add index.html ainext-user-data.js ainext-user-admin.js ainext-runtime-hardening.js ainext-history-launcher.js .github/workflows/ainext-user-integrate.yml
           git diff --cached --quiet && exit 0
-          git commit -m "Integrate Ainext database user management and security hardening [skip ci]"
+          git commit -m "Integrate Ainext database user management security and chat history [skip ci]"
           git push
