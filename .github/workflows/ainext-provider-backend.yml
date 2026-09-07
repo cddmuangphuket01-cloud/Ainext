@@ -17,9 +17,17 @@ jobs:
           import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
+          replacements = {
+              "label:'OpenAI GPT-4o mini'": "label:'OpenRouter GPT (ฟรี)'",
+              "org:'OpenAI', model:'gpt-4o-mini'": "org:'OpenRouter', model:'openai/gpt-oss-20b:free'",
+              "endpoint:'https://api.openai.com/v1/chat/completions'": "endpoint:'https://openrouter.ai/api/v1/chat/completions'",
+              "const PROVIDERS = {": "const PROVIDERS = {\n  // GPT provider is routed securely through OpenRouter/Supabase backend",
+          }
+          for old,new in replacements.items():
+              s=s.replace(old,new)
           pattern=r'<script\s+src=["\']\./ainext-provider-backend\.js(?:\?[^"\']*)?["\']\s*></script>\s*'
           s=re.sub(pattern,'',s,flags=re.I)
-          tag='<script src="./ainext-provider-backend.js?v=20260908-1"></script>\n'
+          tag='<script src="./ainext-provider-backend.js?v=20260908-2"></script>\n'
           if '</body>' not in s:
               raise SystemExit('index.html: closing body tag not found')
           s=s.replace('</body>',tag+'</body>',1)
@@ -31,5 +39,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html ainext-provider-backend.js .github/workflows/ainext-provider-backend.yml
           git diff --cached --quiet && exit 0
-          git commit -m "Force provider calls through backend [skip ci]"
+          git commit -m "Rename GPT provider to OpenRouter in UI [skip ci]"
           git push
