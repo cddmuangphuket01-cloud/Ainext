@@ -1,7 +1,7 @@
 /* Ainext Supabase bridge — stable persistence */
 (() => {
   'use strict';
-  const VERSION='2026.09.08.1';
+  const VERSION='2026.09.08.2';
   const SUPABASE_URL='https://yvfrsvqcgmzwgzflywdd.supabase.co';
   const SUPABASE_KEY='sb_publishable_tI4p3UZO4In-fhY2vptCWQ_B3idNMJw';
   const FUNCTION_URL=`${SUPABASE_URL}/functions/v1/ainext-chat`;
@@ -67,7 +67,7 @@
   async function backendChat(provider,message,prior){
     const r=await fetch(FUNCTION_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'x-ainext-client-id':S.clientId},body:JSON.stringify({provider,prompt:message,messages:Array.isArray(prior)?prior:[]})});
     let d={};try{d=await r.json()}catch(_){}
-    if(!r.ok)throw new Error(d.error||`${provider} HTTP ${r.status}`);
+    if(!r.ok){const err=new Error(d.error||`${provider} HTTP ${r.status}`);err.status=r.status;throw err;}
     return d.text||'';
   }
 
@@ -79,7 +79,7 @@
         const p=provider||'gemini',m=getModel(p);
         try{
           await saveUser(message,p,m);
-          const answer=(p==='gemini'||p==='google'||p==='qwen'||p==='alibaba'||p==='qwen-plus')?await backendChat(p,message,prior):await original.apply(this,arguments);
+          const answer=(p==='gemini'||p==='google'||p==='qwen'||p==='alibaba'||p==='qwen-plus'||p==='openai')?await backendChat(p,message,prior):await original.apply(this,arguments);
           await saveAssistant(answer,p,m);await loadHistory();return answer;
         }catch(e){await recordError(p,m,e);throw e;}
       };
