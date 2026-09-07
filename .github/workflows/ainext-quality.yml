@@ -20,3 +20,4 @@ jobs:
           node --check ainext-user-data.js
           node --check ainext-user-admin.js
           node --check ainext-runtime-hardening.js
+          node --check ainext-history-launcher.js
