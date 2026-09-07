@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI PASS — AI เพื่อคู่คิดภาครัฐ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy-1:#0d2a5e; --navy-2:#123670; --navy-3:#1a4a94;
+  --gold:#f5b942; --blue:#1c63d5; --blue-d:#0f4bb0;
+  --bg:#f1f5fb; --card:#ffffff; --line:#e6ecf5;
+  --txt:#1e293b; --muted:#7b8ba3; --green:#16a34a; --red:#dc2626;
+  --sidebar-w:285px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Noto Sans Thai',system-ui,sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.55}
+a{text-decoration:none;color:inherit}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#c7d3e3;border-radius:8px}
+
+/* ---------- SIDEBAR ---------- */
+.sidebar{position:fixed;inset:0 auto 0 0;width:var(--sidebar-w);background:linear-gradient(180deg,#0c2757 0%,#123670 55%,#0e2c60 100%);color:#fff;display:flex;flex-direction:column;z-index:50}
+.brand{display:flex;gap:12px;align-items:center;padding:22px 20px 18px}
+.brand-emblem{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ffffff,#e7eefb);display:grid;place-items:center;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.brand-emblem svg{width:34px;height:34px}
+.brand-title{font-size:25px;font-weight:800;letter-spacing:.5px;line-height:1.1}
+.brand-title span{color:var(--gold)}
+.brand-sub{font-size:11.5px;color:#a9c2e8;margin-top:2px}
+.nav{flex:1;padding:10px 12px;overflow-y:auto}
+.nav-item{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:10px;color:#c9daf3;font-size:15px;font-weight:400;margin-bottom:4px;position:relative;transition:.18s;cursor:pointer}
+.nav-item svg{width:22px;height:22px;flex-shrink:0;opacity:.9}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:#1a55b0;color:#fff;font-weight:500}
+.nav-item.active::before{content:"";position:absolute;left:-12px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:#fff}
+
+/* ---------- MAIN ---------- */
+.main{margin-left:var(--sidebar-w);min-height:100vh;display:flex;flex-direction:column}
+.topbar{height:70px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:18px;padding:0 26px;position:sticky;top:0;z-index:40}
+.topbar-title{font-size:18px;font-weight:700;color:var(--txt)}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:16px}
+.user{display:flex;align-items:center;gap:11px;padding:5px 10px 5px 5px;border-radius:12px;transition:.2s;cursor:pointer}
+.user:hover{background:#eef3fb}
+.avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#2b6fd6,#1748a0);display:grid;place-items:center;color:#fff;font-weight:700}
+
+.content{padding:22px 26px;flex:1;display:flex;flex-direction:column;gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 3px rgba(20,45,90,.05);padding:24px}
+
+/* FORM STYLES */
+.form-group{margin-bottom:20px;display:flex;flex-direction:column;gap:8px}
+.form-label{font-weight:600;color:var(--txt);font-size:14px}
+.form-input, .form-textarea{
+  width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:8px;font-family:inherit;font-size:14px;
+  background:#fff;color:var(--txt);transition:.2s;
+}
+.form-input:focus, .form-textarea:focus{
+  outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(28,99,213,.1)
+}
+.form-textarea{resize:vertical;min-height:80px}
+.form-hint{font-size:12px;color:var(--muted)}
+.form-group.row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group.row .form-input{grid-column:span 1}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:8px;font-weight:600;font-size:14px;transition:.2s;cursor:pointer;border:none;background:none;text-decoration:none}
+.btn-primary{background:linear-gradient(135deg,#2b7ae4,#1656bd);color:#fff;box-shadow:0 4px 12px rgba(28,99,213,.3)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(28,99,213,.4)}
+.btn-secondary{background:#f1f5fb;color:var(--txt);border:1px solid var(--line)}
+.btn-secondary:hover{background:#e8ecf5;border-color:#d1dce9}
+.btn-danger{background:#fee2e2;color:#dc2626;border:1px solid #fecaca}
+.btn-danger:hover{background:#fecaca}
+.btn-group{display:flex;gap:12px;margin-top:24px}
+
+/* ALERT */
+.alert{padding:14px 16px;border-radius:8px;margin-bottom:16px;display:flex;align-items:flex-start;gap:12px;animation:slideDown .3s ease}
+@keyframes slideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.alert.success{background:#dcfce7;border:1px solid #86efac;color:#166534}
+.alert.error{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b}
+.alert.info{background:#dbeafe;border:1px solid #93c5fd;color:#1e40af}
+.alert.warning{background:#fef3c7;border:1px solid #fcd34d;color:#92400e}
+.alert-close{margin-left:auto;cursor:pointer;opacity:.6;font-size:20px;line-height:1}
+.alert-close:hover{opacity:1}
+
+/* TABS */
+.tabs{display:flex;gap:8px;border-bottom:1px solid var(--line);margin-bottom:24px}
+.tab{padding:12px 18px;font-weight:600;cursor:pointer;color:var(--muted);transition:.2s;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* GRID LAYOUT */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+
+/* API STATUS */
+.api-item{border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;justify-content:space-between;align-items:center;background:var(--card);transition:.2s}
+.api-item:hover{border-color:var(--blue);box-shadow:0 2px 8px rgba(28,99,213,.12)}
+.api-info h4{font-weight:700;margin-bottom:4px}
+.api-info p{font-size:12px;color:var(--muted)}
+.api-status{display:inline-block;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.status-connected{background:#dcfce7;color:#166534}
+.status-missing{background:#fee2e2;color:#991b1b}
+
+/* HIDDEN */
+.hidden{display:none!important}
+
+/* MODAL */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:grid;place-items:center;z-index:100;animation:fadeIn .2s}
+.modal.hidden{display:none}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-content{background:var(--card);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:600px;width:90%;max-height:80vh;overflow-y:auto}
+.modal-header{padding:24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+.modal-header h2{font-size:20px;font-weight:700}
+.modal-close{width:36px;height:36px;border-radius:8px;display:grid;place-items:center;cursor:pointer;transition:.2s;background:none;border:none;color:var(--txt);font-size:24px}
+.modal-close:hover{background:#f1f5fb;color:var(--muted)}
+.modal-body{padding:24px}
+.modal-footer{padding:24px;border-top:1px solid var(--line);display:flex;gap:12px;justify-content:flex-end}
+
+/* RESPONSIVE */
+@media(max-width:1200px){
+  .grid-4{grid-template-columns:repeat(2,1fr)}
+  .grid-3{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .sidebar{width:80px}
+  .sidebar .brand-title,.sidebar .brand-sub,.nav .label{display:none}
+  .main{margin-left:80px}
+  .nav-item{justify-content:center}
+  .nav-item svg{width:24px;height:24px}
+  .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+  .form-group.row{grid-template-columns:1fr}
+  .topbar{flex-wrap:wrap}
+}
+</style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="brand">
+    <div class="brand-emblem">
+      <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9h6v6H9z"/></svg>
+    </div>
+    <div>
+      <div class="brand-title">AI<span>PASS</span></div>
+      <div class="brand-sub">ภาครัฐ</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      <span>แดชบอร์ด</span>
+    </div>
+    <div class="nav-item" onclick="showPage('config')">
+      <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><path d="M12 1v6m0 6v6"/><path d="M4.22 4.22l4.24 4.24m1.08 1.08l4.24 4.24M4.22 19.78l4.24-4.24m1.08-1.08l4.24-4.24"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>ตั้งค่า</span>
+    </div>
+  </nav>
+</div>
+
+<div class="main">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">แดชบอร์ด</div>
+    <div class="topbar-right">
+      <div class="user">
+        <div class="avatar">👤</div>
+        <div><strong>Admin</strong><br><small style="color:var(--muted)">ผู้ดูแลระบบ</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- DASHBOARD PAGE -->
+    <div id="dashboard" class="page">
+      <div class="card">
+        <h2 style="margin-bottom:16px">ยินดีต้อนรับ 👋</h2>
+        <p style="margin-bottom:16px">กรุณาเริ่มโดยการตั้งค่า API keys และการเชื่อมต่อ Supabase ที่เพจ <strong>ตั้งค่า</strong> เพื่อให้ระบบสามารถเข้าถึงโมเดล AI ต่าง ๆ ได้</p>
+        <button class="btn btn-primary" onclick="showPage('config')">
+          <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><path d="M12 1v6m0 6v6"/></svg>
+          ไปที่หน้าตั้งค่า
+        </button>
+      </div>
+    </div>
+
+    <!-- CONFIG PAGE -->
+    <div id="config" class="page hidden">
+      <div id="alerts"></div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('api-keys')">🔑 API Keys</div>
+        <div class="tab" onclick="switchTab('supabase')">🗄️ Supabase</div>
+      </div>
+
+      <!-- API KEYS TAB -->
+      <div id="api-keys" class="tab-content">
+        <div class="card">
+          <h3 style="margin-bottom:20px">ตั้งค่า API Keys โมเดล AI</h3>
+          
+          <div class="grid-2">
+            <!-- OpenAI -->
+            <div class="api-item">
+              <div class="api-info">
+                <h4>OpenAI GPT-4o</h4>
+                <p>สำหรับโมเดล GPT-4o</p>
+              </div>
+              <div class="api-status" id="status-openai">ยังไม่ตั้งค่า</div>
+            </div>
+
+            <!-- Google Gemini -->
+            <div class="api-item">
+              <div class="api-info">
+                <h4>Google Gemini 2.5</h4>
+                <p>สำหรับโมเดล Gemini Pro</p>
+              </div>
+              <div class="api-status" id="status-gemini">ยังไม่ตั้งค่า</div>
+            </div>
+
+            <!-- Groq -->
+            <div class="api-item">
+              <div class="api-info">
+                <h4>Groq Llama 3.1</h4>
+                <p>สำหรับโมเดล Llama</p>
+              </div>
+              <div class="api-status" id="status-groq">ยังไม่ตั้งค่า</div>
+            </div>
+
+            <!-- Qwen -->
+            <div class="api-item">
+              <div class="api-info">
+                <h4>Alibaba Qwen 2.5</h4>
+                <p>สำหรับโมเดล Qwen</p>
+              </div>
+              <div class="api-status" id="status-qwen">ยังไม่ตั้งค่า</div>
+            </div>
+          </div>
+
+          <h3 style="margin:32px 0 20px">ป้อนคีย์ API</h3>
+
+          <!-- OpenAI Form -->
+          <div style="margin-bottom:32px;padding:20px;background:#f9fafb;border-radius:10px;border:1px solid var(--line)">
+            <h4 style="margin-bottom:16px">🔑 OpenAI (GPT-4o)</h4>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input type="password" class="form-input" id="openai-key" placeholder="sk-...">
+              <p class="form-hint">ได้จาก https://platform.openai.com/api-keys</p>
+            </div>
+            <button class="btn btn-primary" onclick="saveApiKey('openai')">บันทึก OpenAI</button>
+          </div>
+
+          <!-- Google Gemini Form -->
+          <div style="margin-bottom:32px;padding:20px;background:#f9fafb;border-radius:10px;border:1px solid var(--line)">
+            <h4 style="margin-bottom:16px">🔑 Google Gemini</h4>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input type="password" class="form-input" id="gemini-key" placeholder="AIza...">
+              <p class="form-hint">ได้จาก https://aistudio.google.com/app/apikey</p>
+            </div>
+            <button class="btn btn-primary" onclick="saveApiKey('gemini')">บันทึก Gemini</button>
+          </div>
+
+          <!-- Groq Form -->
+          <div style="margin-bottom:32px;padding:20px;background:#f9fafb;border-radius:10px;border:1px solid var(--line)">
+            <h4 style="margin-bottom:16px">🔑 Groq Llama</h4>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input type="password" class="form-input" id="groq-key" placeholder="gsk_...">
+              <p class="form-hint">ได้จาก https://console.groq.com/keys</p>
+            </div>
+            <button class="btn btn-primary" onclick="saveApiKey('groq')">บันทึก Groq</button>
+          </div>
+
+          <!-- Qwen Form -->
+          <div style="margin-bottom:32px;padding:20px;background:#f9fafb;border-radius:10px;border:1px solid var(--line)">
+            <h4 style="margin-bottom:16px">🔑 Qwen 2.5</h4>
+            <div class="form-group">
+              <label class="form-label">API Key</label>
+              <input type="password" class="form-input" id="qwen-key" placeholder="sk_...">
+              <p class="form-hint">ได้จาก https://dashscope.console.aliyun.com/api-key</p>
+            </div>
+            <button class="btn btn-primary" onclick="saveApiKey('qwen')">บันทึก Qwen</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SUPABASE TAB -->
+      <div id="supabase" class="tab-content hidden">
+        <div class="card">
+          <h3 style="margin-bottom:20px">ตั้งค่า Supabase Database</h3>
+          
+          <div class="api-item" style="margin-bottom:20px">
+            <div class="api-info">
+              <h4>สถานะการเชื่อมต่อ</h4>
+              <p>ตรวจสอบการเชื่อมต่อกับฐานข้อมูล</p>
+            </div>
+            <div class="api-status" id="status-supabase">ยังไม่เชื่อมต่อ</div>
+          </div>
+
+          <div style="padding:20px;background:#f9fafb;border-radius:10px;border:1px solid var(--line)">
+            <h4 style="margin-bottom:20px">🔗 ข้อมูลการเชื่อมต่อ Supabase</h4>
+
+            <div class="form-group">
+              <label class="form-label">Supabase URL</label>
+              <input type="url" class="form-input" id="supabase-url" placeholder="https://xxxxx.supabase.co">
+              <p class="form-hint">ได้จาก https://app.supabase.com</p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Anon Key (Public Key)</label>
+              <input type="password" class="form-input" id="supabase-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+              <p class="form-hint">ได้จาก Project Settings → API Keys</p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Service Role Key (Secret Key)</label>
+              <input type="password" class="form-input" id="supabase-secret" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+              <p class="form-hint">⚠️ เก็บเป็นความลับ สำหรับการใช้งานเซิร์ฟเวอร์เท่านั้น</p>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Database Password</label>
+              <input type="password" class="form-input" id="supabase-db-pass" placeholder="postgres password">
+              <p class="form-hint">รหัสผ่านฐานข้อมูล PostgreSQL</p>
+            </div>
+
+            <button class="btn btn-primary" onclick="saveSupabaseConfig()" style="margin-top:20px">
+              <svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"/></svg>
+              ทดสอบและบันทึก
+            </button>
+          </div>
+
+          <div style="margin-top:20px;padding:16px;background:#e0e7ff;border-radius:10px;border-left:4px solid #4f46e5">
+            <p><strong>💡 วิธีหาข้อมูล Supabase:</strong></p>
+            <ol style="margin:8px 0 0 20px;font-size:13px">
+              <li>เข้า https://app.supabase.com</li>
+              <li>เลือก Project ของคุณ</li>
+              <li>ไปที่ Settings → API</li>
+              <li>คัดลอก URL และ Keys</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// LOCAL STORAGE & STATE MANAGEMENT
+// ================================================================
+const CONFIG_KEY = 'ai_pass_config';
+let config = loadConfig();
+
+function loadConfig() {
+  const stored = localStorage.getItem(CONFIG_KEY);
+  return stored ? JSON.parse(stored) : {
+    openai: { key: '' },
+    gemini: { key: '' },
+    groq: { key: '' },
+    qwen: { key: '' },
+    supabase: { url: '', anonKey: '', secretKey: '', dbPassword: '' }
+  };
+}
+
+function saveConfig() {
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+  updateStatusIndicators();
+}
+
+// ================================================================
+// UI FUNCTIONS
+// ================================================================
+function showPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+  document.getElementById(page).classList.remove('hidden');
+  
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  event?.target?.closest('.nav-item')?.classList.add('active');
+  
+  const titles = { dashboard: 'แดชบอร์ด', config: 'ตั้งค่า' };
+  document.getElementById('pageTitle').textContent = titles[page];
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+  document.getElementById(tab).classList.remove('hidden');
+  
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function showAlert(message, type = 'info') {
+  const alertsDiv = document.getElementById('alerts');
+  const alert = document.createElement('div');
+  alert.className = `alert ${type}`;
+  alert.innerHTML = `
+    <span>${message}</span>
+    <span class="alert-close" onclick="this.parentElement.remove()">✕</span>
+  `;
+  alertsDiv.appendChild(alert);
+  
+  setTimeout(() => alert.remove(), 5000);
+}
+
+function updateStatusIndicators() {
+  const statuses = {
+    'status-openai': config.openai.key ? 'connected' : 'missing',
+    'status-gemini': config.gemini.key ? 'connected' : 'missing',
+    'status-groq': config.groq.key ? 'connected' : 'missing',
+    'status-qwen': config.qwen.key ? 'connected' : 'missing',
+    'status-supabase': config.supabase.url ? 'connected' : 'missing'
+  };
+  
+  Object.entries(statuses).forEach(([id, status]) => {
+    const el = document.getElementById(id);
+    el.className = 'api-status status-' + status;
+    el.textContent = status === 'connected' ? '✓ เชื่อมต่อแล้ว' : '✗ ยังไม่ตั้งค่า';
+  });
+}
+
+// ================================================================
+// API KEY MANAGEMENT
+// ================================================================
+function saveApiKey(provider) {
+  const keyEl = document.getElementById(`${provider}-key`);
+  const key = keyEl.value.trim();
+  
+  if (!key) {
+    showAlert(`กรุณากรอก API Key สำหรับ ${provider}`, 'error');
+    return;
+  }
+  
+  if (key.length < 10) {
+    showAlert('API Key ไม่ถูกต้อง (มีความยาวน้อยเกินไป)', 'error');
+    return;
+  }
+  
+  config[provider].key = key;
+  saveConfig();
+  
+  keyEl.value = '';
+  showAlert(`บันทึก ${provider.toUpperCase()} API Key สำเร็จ ✓`, 'success');
+  console.log(`[${provider.toUpperCase()}] Key saved (${key.substring(0, 10)}...)`);
+}
+
+// ================================================================
+// SUPABASE MANAGEMENT
+// ================================================================
+async function testSupabaseConnection(url, anonKey) {
+  try {
+    const response = await fetch(`${url}/rest/v1/`, {
+      headers: {
+        'apikey': anonKey,
+        'Authorization': `Bearer ${anonKey}`
+      }
+    });
+    
+    return response.ok;
+  } catch (error) {
+    console.error('Supabase test error:', error);
+    return false;
+  }
+}
+
+async function saveSupabaseConfig() {
+  const url = document.getElementById('supabase-url').value.trim();
+  const anonKey = document.getElementById('supabase-key').value.trim();
+  const secretKey = document.getElementById('supabase-secret').value.trim();
+  const dbPassword = document.getElementById('supabase-db-pass').value.trim();
+  
+  if (!url || !anonKey) {
+    showAlert('กรุณากรอก Supabase URL และ Anon Key', 'error');
+    return;
+  }
+  
+  if (!url.includes('supabase.co')) {
+    showAlert('URL ไม่ถูกต้อง (ต้องเป็น Supabase URL)', 'error');
+    return;
+  }
+  
+  showAlert('🔄 กำลังทดสอบการเชื่อมต่อ...', 'info');
+  
+  const isConnected = await testSupabaseConnection(url, anonKey);
+  
+  if (!isConnected) {
+    showAlert('❌ ไม่สามารถเชื่อมต่อ Supabase ได้ ตรวจสอบ URL และ Key', 'error');
+    return;
+  }
+  
+  config.supabase = { url, anonKey, secretKey, dbPassword };
+  saveConfig();
+  
+  document.getElementById('supabase-url').value = '';
+  document.getElementById('supabase-key').value = '';
+  document.getElementById('supabase-secret').value = '';
+  document.getElementById('supabase-db-pass').value = '';
+  
+  showAlert('✓ บันทึกการตั้งค่า Supabase สำเร็จ และทดสอบการเชื่อมต่อผ่านแล้ว', 'success');
+  console.log('[SUPABASE] Config saved:', { url, hasAnonKey: true, hasSecretKey: !!secretKey });
+}
+
+// ================================================================
+// UTILITY
+// ================================================================
+function exportConfig() {
+  const masked = {
+    ...config,
+    openai: { key: config.openai.key ? config.openai.key.substring(0, 10) + '...' : '' },
+    gemini: { key: config.gemini.key ? config.gemini.key.substring(0, 10) + '...' : '' },
+    groq: { key: config.groq.key ? config.groq.key.substring(0, 10) + '...' : '' },
+    qwen: { key: config.qwen.key ? config.qwen.key.substring(0, 10) + '...' : '' },
+    supabase: {
+      url: config.supabase.url,
+      anonKey: config.supabase.anonKey ? config.supabase.anonKey.substring(0, 10) + '...' : '',
+      secretKey: config.supabase.secretKey ? '***SECRET***' : '',
+      dbPassword: config.supabase.dbPassword ? '***PASSWORD***' : ''
+    }
+  };
+  console.log('Current Config:', masked);
+}
+
+// ================================================================
+// INIT
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  updateStatusIndicators();
+  console.log('✓ AI PASS Configuration loaded');
+  
+  // Load saved values into form (masked)
+  if (config.supabase.url) {
+    document.getElementById('supabase-url').value = config.supabase.url;
+  }
+  
+  console.log('Use exportConfig() to view your current configuration');
+});
+
+// Add keyboard support
+document.querySelectorAll('.form-input, .form-textarea').forEach(input => {
+  input.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) {
+      e.target.closest('.card')?.querySelector('.btn-primary')?.click();
+    }
+  });
+});
+</script>
+
+</body>
+</html>
