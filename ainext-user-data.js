@@ -1,6 +1,6 @@
-/* Ainext user persistence — database profile + safe client identity upsert */
+/* Ainext user persistence — database profile + safe client identity sync */
 (() => {
-  const USER_SYNCED = 'ainext_user_synced_v3';
+  const USER_SYNCED = 'ainext_user_synced_v4';
   const WARNING_NEEDLES = [
     'เรียก API ของผู้ให้บริการโดยตรงจากเบราว์เซอร์',
     'คีย์ API จะถูกเก็บไว้ใน Local Storage',
@@ -33,24 +33,34 @@
   async function syncUser() {
     const api = window.AinextSupabase;
     const clientId = getClientId();
-    if (!api?.db || !clientId) return;
+    if (!api?.db || !clientId) return null;
 
     let authUser = null;
     try { authUser = (await api.db.auth.getUser()).data?.user || null; } catch (_) {}
 
-    const preferredId = authUser?.id || await uuidFromClientId(clientId);
+    const deterministicId = await uuidFromClientId(clientId);
+    const preferredId = authUser?.id || deterministicId;
     const displayName = authUser?.user_metadata?.display_name || textValue('.user-name') || textValue('[data-user-name]') || 'ผู้ใช้งาน Ainext';
     const role = textValue('.user-role') || textValue('[data-user-role]') || 'user';
     const email = authUser?.email || document.querySelector('[data-user-email]')?.textContent?.trim() || null;
     const avatarUrl = authUser?.user_metadata?.avatar_url || null;
 
-    // client_id is the legacy browser identity and is UNIQUE. Always resolve the
-    // existing row first so an auth-id change cannot cause a duplicate client_id.
+    // Never rely on PostgREST ON CONFLICT inference here. client_id is a partial
+    // unique index and old rows may have been created with a different id.
     let existing = null;
     try {
-      const { data, error } = await api.db.from('ai_users').select('id').eq('client_id', clientId).maybeSingle();
-      if (!error && data) existing = data;
+      const byClient = await api.db.from('ai_users').select('id,client_id').eq('client_id', clientId).maybeSingle();
+      if (!byClient.error && byClient.data) existing = byClient.data;
     } catch (_) {}
+
+    // If the browser identity is new but Auth is already signed in, also check
+    // the Auth user id before inserting a second profile row.
+    if (!existing && authUser?.id) {
+      try {
+        const byAuth = await api.db.from('ai_users').select('id,client_id').eq('id', authUser.id).maybeSingle();
+        if (!byAuth.error && byAuth.data) existing = byAuth.data;
+      } catch (_) {}
+    }
 
     const userId = existing?.id || preferredId;
     const payload = {
@@ -63,16 +73,22 @@
       updated_at: new Date().toISOString()
     };
 
-    // Conflict target is client_id, not id. This is the actual unique identity
-    // constraint used by the browser-based legacy user model.
-    const { error } = await api.db.from('ai_users').upsert(payload, { onConflict: 'client_id' });
-    if (error) {
-      console.warn('Ainext user profile sync failed:', error.message);
-      return;
+    let error = null;
+    if (existing) {
+      // Update by primary key so a client-id collision can never create a second row.
+      ({ error } = await api.db.from('ai_users').update(payload).eq('id', existing.id));
+    } else {
+      ({ error } = await api.db.from('ai_users').insert(payload));
     }
 
-    // Link older records created before user_id was available.
-    const tables = ['ai_conversations','ai_usage','ai_documents'];
+    if (error) {
+      console.warn('Ainext user profile sync failed:', error.message);
+      return null;
+    }
+
+    // Link legacy records to the resolved profile. Do this after the profile
+    // exists so RLS can evaluate user ownership consistently.
+    const tables = ['ai_conversations','ai_usage','ai_documents','ai_messages'];
     for (const table of tables) {
       try {
         await api.db.from(table).update({ user_id: userId }).eq('client_id', clientId).is('user_id', null);
@@ -83,6 +99,7 @@
     api.userId = userId;
     api.user = { id:userId, displayName, role, email, avatarUrl };
     if (api.state) api.state.userId = userId;
+    return userId;
   }
 
   function hookCallAI() {
@@ -113,6 +130,7 @@
     setTimeout(() => observer.disconnect(), 30000);
   }
 
+  window.AinextSyncUser = syncUser;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
   else start();
 })();
