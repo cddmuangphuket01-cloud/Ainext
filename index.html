@@ -828,6 +828,7 @@ function saveUsers(){ saveJSON(USERS_KEY, users); }
 // ================================================================
 const PROVIDERS = {
   // GPT provider is routed securely through OpenRouter/Supabase backend
+  // GPT provider is routed securely through OpenRouter/Supabase backend
   openai: { label:'OpenRouter GPT (ฟรี)', org:'OpenRouter', model:'openai/gpt-oss-20b:free',
     endpoint:'https://openrouter.ai/api/v1/chat/completions', kind:'openai-compatible' },
   gemini: { label:'Google Gemini 3.5 Flash', org:'Google', model:'gemini-3.5-flash',
