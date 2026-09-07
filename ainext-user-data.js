@@ -3,9 +3,7 @@
   const USER_SYNCED = 'ainext_user_synced_v1';
   const WARNING_TEXT = 'เรียก API ของผู้ให้บริการโดยตรงจากเบราว์เซอร์';
 
-  function getClientId() {
-    return localStorage.getItem('ainext_client_id') || '';
-  }
+  function getClientId() { return localStorage.getItem('ainext_client_id') || ''; }
 
   async function uuidFromClientId(clientId) {
     const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(clientId)));
@@ -16,19 +14,12 @@
   }
 
   function textValue(selector) {
-    const el = document.querySelector(selector);
-    return (el?.textContent || '').replace(/\s+/g,' ').trim();
+    return (document.querySelector(selector)?.textContent || '').replace(/\s+/g,' ').trim();
   }
 
   function removeBrowserApiNotice() {
-    const needles = [
-      WARNING_TEXT,
-      'คีย์ API จะถูกเก็บไว้ใน Local Storage',
-      'หากนำไปใช้งานจริงในวงกว้าง แนะนำให้ทำ Backend Proxy',
-      'หลีกเลี่ยงปัญหา CORS จากผู้ให้บริการบางราย'
-    ];
-    const all = document.querySelectorAll('body *');
-    all.forEach(el => {
+    const needles = [WARNING_TEXT,'คีย์ API จะถูกเก็บไว้ใน Local Storage','หากนำไปใช้งานจริงในวงกว้าง แนะนำให้ทำ Backend Proxy','หลีกเลี่ยงปัญหา CORS จากผู้ให้บริการบางราย'];
+    document.querySelectorAll('body *').forEach(el => {
       if (el.id === 'ainext-history' || el.closest('#ainext-history')) return;
       const text = (el.textContent || '').trim();
       if (text && needles.some(n => text.includes(n)) && el.children.length === 0) {
@@ -47,26 +38,15 @@
     const displayName = textValue('.user-name') || textValue('[data-user-name]') || 'ผู้ใช้งาน Ainext';
     const role = textValue('.user-role') || textValue('[data-user-role]') || 'user';
 
-    const { error: userError } = await api.db.from('ai_users').upsert({
-      id: userId,
-      display_name: displayName.slice(0,200),
-      role: role.slice(0,100),
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'id' });
-    if (userError) {
-      console.warn('Ainext user profile sync failed:', userError.message);
-      return;
-    }
+    const { error } = await api.db.from('ai_users').upsert({
+      id:userId, display_name:displayName.slice(0,200), role:role.slice(0,100), updated_at:new Date().toISOString()
+    }, { onConflict:'id' });
+    if (error) { console.warn('Ainext user profile sync failed:', error.message); return; }
 
-    await Promise.all([
-      api.db.from('ai_conversations').update({ user_id: userId }).eq('client_id', clientId).is('user_id', null),
-      api.db.from('ai_messages').update({}).eq('client_id', clientId),
-      api.db.from('ai_usage').update({ user_id: userId }).eq('client_id', clientId).is('user_id', null)
-    ]);
-
-    // Messages table has no user_id column in the current schema; ownership is linked through conversation_id/client_id.
-    localStorage.setItem(USER_SYNCED, userId);
-    api.user = { id: userId, displayName, role };
+    await api.db.from('ai_conversations').update({user_id:userId}).eq('client_id',clientId).is('user_id',null);
+    await api.db.from('ai_usage').update({user_id:userId}).eq('client_id',clientId).is('user_id',null);
+    localStorage.setItem(USER_SYNCED,userId);
+    api.user = {id:userId,displayName,role};
   }
 
   function hookCallAI() {
@@ -74,8 +54,8 @@
     if (!api || typeof window.callAI !== 'function' || window.callAI.__ainextUserHook) return !!api;
     const original = window.callAI;
     const wrapped = async function(...args) {
-      const result = await original.apply(this, args);
-      try { await syncUser(); } catch (e) { console.warn('Ainext user sync:', e); }
+      const result = await original.apply(this,args);
+      try { await syncUser(); } catch(e) { console.warn('Ainext user sync:',e); }
       return result;
     };
     wrapped.__ainextUserHook = true;
@@ -85,20 +65,18 @@
 
   function start() {
     removeBrowserApiNotice();
-    let tries = 0;
-    const timer = setInterval(async () => {
+    let tries=0;
+    const timer=setInterval(async()=>{
       removeBrowserApiNotice();
-      if (hookCallAI()) {
-        try { await syncUser(); } catch (e) { console.warn('Ainext user sync:', e); }
-        if (++tries > 5) clearInterval(timer);
-      } else if (++tries > 40) clearInterval(timer);
-    }, 500);
-
-    const observer = new MutationObserver(() => removeBrowserApiNotice());
-    observer.observe(document.body, { childList:true, subtree:true, characterData:true });
-    setTimeout(() => observer.disconnect(), 30000);
+      if(hookCallAI()) {
+        try { await syncUser(); } catch(e) { console.warn('Ainext user sync:',e); }
+        if(++tries>5) clearInterval(timer);
+      } else if(++tries>40) clearInterval(timer);
+    },500);
+    const observer=new MutationObserver(removeBrowserApiNotice);
+    observer.observe(document.body,{childList:true,subtree:true,characterData:true});
+    setTimeout(()=>observer.disconnect(),30000);
   }
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once:true });
-  else start();
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true}); else start();
 })();
