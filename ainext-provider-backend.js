@@ -1,14 +1,24 @@
-/* Ainext provider backend compatibility shim
- * OpenAI/GPT requests are now routed by ainext-supabase.js to the Supabase Edge Function,
- * which then uses the server-side OPENROUTER_API_KEY secret. This file intentionally does not
- * intercept callAI, so chat history persistence remains enabled.
- */
+/* Ainext provider backend compatibility shim — OpenRouter GPT */
 (() => {
   'use strict';
-  window.AinextProviderBackend = {
-    version: '2026.09.08.2',
-    provider: 'openrouter',
-    model: 'openai/gpt-oss-20b:free',
-    backend: true
-  };
+  const MODEL='openai/gpt-oss-20b:free';
+  function patch(){
+    try{
+      if(window.PROVIDERS?.openai){
+        window.PROVIDERS.openai.label='OpenRouter GPT (ฟรี)';
+        window.PROVIDERS.openai.org='OpenRouter';
+        window.PROVIDERS.openai.model=MODEL;
+        window.PROVIDERS.openai.endpoint='https://openrouter.ai/api/v1/chat/completions';
+      }
+      document.querySelectorAll('body *').forEach(el=>{
+        if(el.children.length===0 && typeof el.textContent==='string'){
+          if(el.textContent.includes('OpenAI GPT-4o mini')) el.textContent=el.textContent.replaceAll('OpenAI GPT-4o mini','OpenRouter GPT (ฟรี)');
+          if(el.textContent==='OpenAI') el.textContent='OpenRouter';
+        }
+      });
+    }catch(_){}
+  }
+  window.AinextProviderBackend={version:'2026.09.08.4',provider:'openrouter',model:MODEL,backend:true};
+  patch();
+  let n=0;const timer=setInterval(()=>{patch();if(++n>40)clearInterval(timer)},250);
 })();
