@@ -1,74 +1,70 @@
-/* Ainext user admin — use Supabase ai_users instead of browser-only user records */
+/* Ainext user admin — database-backed user management */
 (() => {
-  function api(){ return window.AinextSupabase?.db ? window.AinextSupabase : null; }
-  function esc(s){ return String(s ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  function initials(name){ return esc(String(name||'?').trim().slice(0,1).toUpperCase()); }
+  'use strict';
+  function api(){return window.AinextSupabase?.db?window.AinextSupabase:null;}
+  function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+  function initials(name){return esc(String(name||'?').trim().slice(0,1).toUpperCase());}
+  const el=id=>document.getElementById(id);
 
   async function loadUsers(){
-    const a=api(); if(!a) return [];
-    const {data,error}=await a.db.from('ai_users').select('id,email,display_name,role,client_id,created_at,updated_at').eq('client_id',a.clientId).order('created_at',{ascending:false}).limit(200);
-    if(error){ console.warn('Ainext users load:',error.message); return []; }
-    return data||[];
+    const a=api();if(!a)return [];
+    const {data,error}=await a.db.from('ai_users').select('id,email,display_name,department,role,client_id,created_at,updated_at').eq('client_id',a.clientId).order('created_at',{ascending:false}).limit(200);
+    if(error){console.warn('Ainext users load:',error.message);return [];}return data||[];
   }
 
   async function renderUsersDb(){
-    const tbody=document.getElementById('usersTbody'); if(!tbody) return;
-    const rows=await loadUsers();
-    window.ainextDbUsers=rows;
+    const tbody=el('usersTbody');if(!tbody)return;
+    const rows=await loadUsers();window.ainextDbUsers=rows;
     if(!rows.length){tbody.innerHTML='<tr><td colspan="5"><div class="empty-state">ยังไม่มีผู้ใช้ในฐานข้อมูล</div></td></tr>';return;}
-    tbody.innerHTML=rows.map(u=>`<tr><td><span class="user-avatar-sm">${initials(u.display_name)}</span>${esc(u.display_name||'-')}</td><td>${esc(u.email||'-')}</td><td>${esc(u.role||'-')}</td><td><span class="role-tag">${esc(u.role||'-')}</span></td><td><button class="btn btn-secondary btn-sm" onclick="openUserModal('${esc(u.id)}')" title="แก้ไข">✎</button> <button class="btn btn-danger btn-sm" onclick="deleteUser('${esc(u.id)}')" title="ลบ">🗑</button></td></tr>`).join('');
+    tbody.innerHTML=rows.map(u=>`<tr><td><span class="user-avatar-sm">${initials(u.display_name)}</span>${esc(u.display_name||'-')}</td><td>${esc(u.email||'-')}</td><td>${esc(u.department||'-')}</td><td><span class="role-tag">${esc(u.role||'-')}</span></td><td><button class="btn btn-secondary btn-sm" onclick="openUserModal('${esc(u.id)}')" title="แก้ไข">✎</button> <button class="btn btn-danger btn-sm" onclick="deleteUser('${esc(u.id)}')" title="ลบ">🗑</button></td></tr>`).join('');
   }
 
   function openUserModalDb(id){
-    const rows=window.ainextDbUsers||[]; const u=id?rows.find(x=>x.id===id):null;
-    document.getElementById('userId').value=id||'';
-    document.getElementById('userModalTitle').textContent=u?'แก้ไขผู้ใช้':'เพิ่มผู้ใช้';
-    document.getElementById('userName').value=u?.display_name||'';
-    document.getElementById('userEmail').value=u?.email||'';
-    document.getElementById('userDept').value='กรมการพัฒนาชุมชน';
-    document.getElementById('userRole').value=u?.role||'เจ้าหน้าที่';
-    document.getElementById('userModal').classList.remove('hidden');
+    const rows=window.ainextDbUsers||[];const u=id?rows.find(x=>x.id===id):null;
+    if(!el('userId')||!el('userModal'))return;
+    el('userId').value=id||'';if(el('userModalTitle'))el('userModalTitle').textContent=u?'แก้ไขผู้ใช้':'เพิ่มผู้ใช้';
+    if(el('userName'))el('userName').value=u?.display_name||'';
+    if(el('userEmail'))el('userEmail').value=u?.email||'';
+    if(el('userDept'))el('userDept').value=u?.department||'กรมการพัฒนาชุมชน';
+    if(el('userRole'))el('userRole').value=u?.role||'เจ้าหน้าที่';
+    el('userModal').classList.remove('hidden');
   }
 
   async function saveUserDb(){
-    const a=api(); if(!a){showToast?.('ฐานข้อมูลยังไม่พร้อม','error');return;}
-    const id=document.getElementById('userId').value.trim();
-    const name=document.getElementById('userName').value.trim();
-    const email=document.getElementById('userEmail').value.trim()||null;
-    const role=document.getElementById('userRole').value;
+    const a=api();if(!a){showToast?.('ฐานข้อมูลยังไม่พร้อม','error');return;}
+    const id=(el('userId')?.value||'').trim();const name=(el('userName')?.value||'').trim();const email=(el('userEmail')?.value||'').trim()||null;const department=(el('userDept')?.value||'กรมการพัฒนาชุมชน').trim();const role=(el('userRole')?.value||'ผู้ใช้ทั่วไป').trim();
     if(!name){showToast?.('กรุณากรอกชื่อผู้ใช้','error');return;}
-    const payload={display_name:name,email,role,client_id:a.clientId,updated_at:new Date().toISOString()};
-    let error;
-    if(id){({error}=await a.db.from('ai_users').update(payload).eq('id',id).eq('client_id',a.clientId));}
-    else {payload.id=crypto.randomUUID();({error}=await a.db.from('ai_users').insert(payload));}
-    if(error){showToast?.('บันทึกผู้ใช้ไม่สำเร็จ: '+error.message,'error');return;}
-    document.getElementById('userModal').classList.add('hidden');
-    await renderUsersDb();
-    showToast?.('บันทึกข้อมูลผู้ใช้ลง Supabase แล้ว','success');
+    const payload={display_name:name,email,department,role,client_id:a.clientId,updated_at:new Date().toISOString()};
+    try{
+      let error=null;
+      if(id){({error}=await a.db.from('ai_users').update(payload).eq('id',id).eq('client_id',a.clientId));}
+      else{
+        // Resolve an existing client identity first; never blindly insert a duplicate client_id.
+        const existing=await a.db.from('ai_users').select('id').eq('client_id',a.clientId).maybeSingle();
+        if(existing.error)throw existing.error;
+        if(existing.data){({error}=await a.db.from('ai_users').update(payload).eq('id',existing.data.id));}
+        else{
+          const authUser=(await a.db.auth.getUser()).data?.user||null;
+          const row={...payload,id:authUser?.id||crypto.randomUUID()};
+          ({error}=await a.db.from('ai_users').insert(row));
+        }
+      }
+      if(error)throw error;
+      try{await window.AinextSyncUser?.();}catch(_){ }
+      el('userModal')?.classList.add('hidden');await renderUsersDb();showToast?.('บันทึกข้อมูลผู้ใช้แล้ว','success');
+    }catch(error){showToast?.('บันทึกผู้ใช้ไม่สำเร็จ: '+(error?.message||error),'error');}
   }
 
   async function deleteUserDb(id){
-    const a=api(); if(!a||!confirm('ลบผู้ใช้นี้จากฐานข้อมูลหรือไม่?'))return;
+    const a=api();if(!a||!id||!confirm('ลบผู้ใช้นี้จากฐานข้อมูลหรือไม่?'))return;
     const {error}=await a.db.from('ai_users').delete().eq('id',id).eq('client_id',a.clientId);
     if(error){showToast?.('ลบผู้ใช้ไม่สำเร็จ: '+error.message,'error');return;}
-    await renderUsersDb();
-    showToast?.('ลบผู้ใช้แล้ว','success');
+    await renderUsersDb();showToast?.('ลบผู้ใช้แล้ว','success');
   }
 
   function patch(){
-    if(!api()) return false;
-    window.renderUsers=renderUsersDb;
-    window.openUserModal=openUserModalDb;
-    window.saveUser=saveUserDb;
-    window.deleteUser=deleteUserDb;
-    return true;
+    if(!api())return false;
+    window.renderUsers=renderUsersDb;window.openUserModal=openUserModalDb;window.saveUser=saveUserDb;window.deleteUser=deleteUserDb;return true;
   }
-
-  let tries=0;
-  const timer=setInterval(async()=>{
-    if(patch()){
-      if(document.getElementById('page-users')&&!document.getElementById('page-users').classList.contains('hidden')) await renderUsersDb();
-      if(++tries>8)clearInterval(timer);
-    }else if(++tries>50)clearInterval(timer);
-  },500);
+  let tries=0;const timer=setInterval(async()=>{if(patch()){if(el('page-users')&&!el('page-users').classList.contains('hidden'))await renderUsersDb();if(++tries>8)clearInterval(timer);}else if(++tries>50)clearInterval(timer);},500);
 })();
