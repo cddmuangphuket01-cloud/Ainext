@@ -1,0 +1,33 @@
+name: Integrate Ainext Supabase
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add Supabase integration to Ainext page
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          tag = '<script src="./ainext-supabase.js"></script>'
+          if tag not in s:
+              if '</body>' not in s:
+                  raise SystemExit('index.html: closing body tag not found')
+              s = s.replace('</body>', tag + '\n</body>', 1)
+              p.write_text(s, encoding='utf-8')
+      - name: Commit integration
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html ainext-supabase.js .github/workflows/ainext-integrate.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "Integrate Ainext with Supabase and Gemini [skip ci]"
+          git push
