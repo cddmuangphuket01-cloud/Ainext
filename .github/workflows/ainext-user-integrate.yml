@@ -10,30 +10,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Inject Ainext runtime modules
+      - name: Normalize runtime script tags
         shell: python
         run: |
           from pathlib import Path
+          import re
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
           if '</body>' not in s:
               raise SystemExit('index.html: closing body tag not found')
-          tags = [
-              '<script src="./ainext-user-data.js"></script>',
-              '<script src="./ainext-user-admin.js"></script>',
-              '<script src="./ainext-runtime-hardening.js"></script>',
-              '<script src="./ainext-history-launcher.js"></script>',
-          ]
-          for tag in tags:
-              if tag not in s:
-                  s = s.replace('</body>', tag + '\n</body>', 1)
+          versions = {
+              'ainext-supabase.js': '20260907-3',
+              'ainext-history-restore.js': '20260907-3',
+              'ainext-user-data.js': '20260907-5',
+              'ainext-user-admin.js': '20260907-3',
+              'ainext-runtime-hardening.js': '20260907-3',
+              'ainext-history-launcher.js': '20260907-3',
+          }
+          for name, ver in versions.items():
+              pattern = rf'<script\s+src=["\']\./{re.escape(name)}(?:\?[^"\']*)?["\']\s*></script>\s*'
+              s = re.sub(pattern, '', s, flags=re.I)
+          tags = ''.join(f'<script src="./{name}?v={ver}"></script>\n' for name, ver in versions.items())
+          s = s.replace('</body>', tags + '</body>', 1)
           p.write_text(s, encoding='utf-8')
       - name: Commit integration
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html ainext-user-data.js ainext-user-admin.js ainext-runtime-hardening.js ainext-history-launcher.js .github/workflows/ainext-user-integrate.yml
+          git add index.html ainext-supabase.js ainext-history-restore.js ainext-user-data.js ainext-user-admin.js ainext-runtime-hardening.js ainext-history-launcher.js .github/workflows/ainext-user-integrate.yml
           git diff --cached --quiet && exit 0
-          git commit -m "Integrate Ainext database user management security and chat history [skip ci]"
+          git commit -m "Fix Ainext runtime versions and cache busting [skip ci]"
           git push
