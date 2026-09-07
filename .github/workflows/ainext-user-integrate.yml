@@ -23,7 +23,7 @@ jobs:
               'ainext-supabase.js': '20260907-3',
               'ainext-history-restore.js': '20260907-3',
               'ainext-user-data.js': '20260907-5',
-              'ainext-user-admin.js': '20260907-3',
+              'ainext-user-admin.js': '20260907-4',
               'ainext-runtime-hardening.js': '20260907-3',
               'ainext-history-launcher.js': '20260907-3',
           }
