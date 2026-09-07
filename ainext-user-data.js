@@ -1,6 +1,6 @@
-/* Ainext user persistence — database profile + remove legacy browser API notice */
+/* Ainext user persistence — database profile + safe client identity upsert */
 (() => {
-  const USER_SYNCED = 'ainext_user_synced_v2';
+  const USER_SYNCED = 'ainext_user_synced_v3';
   const WARNING_NEEDLES = [
     'เรียก API ของผู้ให้บริการโดยตรงจากเบราว์เซอร์',
     'คีย์ API จะถูกเก็บไว้ใน Local Storage',
@@ -9,6 +9,7 @@
   ];
 
   const getClientId = () => localStorage.getItem('ainext_client_id') || '';
+  const textValue = selector => (document.querySelector(selector)?.textContent || '').replace(/\s+/g,' ').trim();
 
   async function uuidFromClientId(clientId) {
     const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(clientId)));
@@ -17,8 +18,6 @@
     const h = [...bytes.slice(0,16)].map(b => b.toString(16).padStart(2,'0')).join('');
     return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
   }
-
-  const textValue = selector => (document.querySelector(selector)?.textContent || '').replace(/\s+/g,' ').trim();
 
   function removeLegacyNotice() {
     document.querySelectorAll('body *').forEach(el => {
@@ -38,12 +37,22 @@
 
     let authUser = null;
     try { authUser = (await api.db.auth.getUser()).data?.user || null; } catch (_) {}
-    const userId = authUser?.id || await uuidFromClientId(clientId);
+
+    const preferredId = authUser?.id || await uuidFromClientId(clientId);
     const displayName = authUser?.user_metadata?.display_name || textValue('.user-name') || textValue('[data-user-name]') || 'ผู้ใช้งาน Ainext';
     const role = textValue('.user-role') || textValue('[data-user-role]') || 'user';
     const email = authUser?.email || document.querySelector('[data-user-email]')?.textContent?.trim() || null;
     const avatarUrl = authUser?.user_metadata?.avatar_url || null;
 
+    // client_id is the legacy browser identity and is UNIQUE. Always resolve the
+    // existing row first so an auth-id change cannot cause a duplicate client_id.
+    let existing = null;
+    try {
+      const { data, error } = await api.db.from('ai_users').select('id').eq('client_id', clientId).maybeSingle();
+      if (!error && data) existing = data;
+    } catch (_) {}
+
+    const userId = existing?.id || preferredId;
     const payload = {
       id: userId,
       client_id: clientId,
@@ -54,11 +63,16 @@
       updated_at: new Date().toISOString()
     };
 
-    const { error } = await api.db.from('ai_users').upsert(payload, { onConflict: 'id' });
-    if (error) { console.warn('Ainext user profile sync failed:', error.message); return; }
+    // Conflict target is client_id, not id. This is the actual unique identity
+    // constraint used by the browser-based legacy user model.
+    const { error } = await api.db.from('ai_users').upsert(payload, { onConflict: 'client_id' });
+    if (error) {
+      console.warn('Ainext user profile sync failed:', error.message);
+      return;
+    }
 
-    // Link older records that were created before user_id was available.
-    const tables = ['ai_conversations','ai_messages','ai_usage','ai_documents'];
+    // Link older records created before user_id was available.
+    const tables = ['ai_conversations','ai_usage','ai_documents'];
     for (const table of tables) {
       try {
         await api.db.from(table).update({ user_id: userId }).eq('client_id', clientId).is('user_id', null);
