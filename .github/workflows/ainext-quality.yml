@@ -18,3 +18,5 @@ jobs:
           node --check ainext-supabase.js
           node --check ainext-history-restore.js
           node --check ainext-user-data.js
+          node --check ainext-user-admin.js
+          node --check ainext-runtime-hardening.js
