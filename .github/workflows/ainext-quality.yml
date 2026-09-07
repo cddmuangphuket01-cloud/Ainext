@@ -21,3 +21,30 @@ jobs:
           node --check ainext-user-admin.js
           node --check ainext-runtime-hardening.js
           node --check ainext-history-launcher.js
+      - name: Block Supabase query builder catch misuse
+        shell: bash
+        run: |
+          if grep -RInE '\.from\([^)]*\)\.(insert|update|delete)\([^;]*\)\.catch\(' --include='*.js' .; then
+            echo 'Found invalid Supabase query-builder .catch() usage'
+            exit 1
+          fi
+      - name: Validate single cache-busted runtime tag set
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          s = Path('index.html').read_text(encoding='utf-8')
+          names = [
+              'ainext-supabase.js',
+              'ainext-history-restore.js',
+              'ainext-user-data.js',
+              'ainext-user-admin.js',
+              'ainext-runtime-hardening.js',
+              'ainext-history-launcher.js',
+          ]
+          for name in names:
+              total = re.findall(rf'<script\s+src=["\']\./{re.escape(name)}(?:\?[^"\']*)?["\']\s*></script>', s, flags=re.I)
+              versioned = re.findall(rf'<script\s+src=["\']\./{re.escape(name)}\?v=[^"\']+["\']\s*></script>', s, flags=re.I)
+              if len(total) != 1 or len(versioned) != 1:
+                  raise SystemExit(f'{name}: expected exactly 1 cache-busted script tag; total={len(total)} versioned={len(versioned)}')
+          print('Runtime script tag validation passed')
