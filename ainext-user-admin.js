@@ -36,22 +36,18 @@
     if(!name){showToast?.('กรุณากรอกชื่อผู้ใช้','error');return;}
     const payload={display_name:name,email,department,role,client_id:a.clientId,updated_at:new Date().toISOString()};
     try{
-      let error=null;
-      if(id){({error}=await a.db.from('ai_users').update(payload).eq('id',id).eq('client_id',a.clientId));}
-      else{
-        // Resolve an existing client identity first; never blindly insert a duplicate client_id.
-        const existing=await a.db.from('ai_users').select('id').eq('client_id',a.clientId).maybeSingle();
-        if(existing.error)throw existing.error;
-        if(existing.data){({error}=await a.db.from('ai_users').update(payload).eq('id',existing.data.id));}
-        else{
-          const authUser=(await a.db.auth.getUser()).data?.user||null;
-          const row={...payload,id:authUser?.id||crypto.randomUUID()};
-          ({error}=await a.db.from('ai_users').insert(row));
-        }
+      let result;
+      if(id){
+        result=await a.db.from('ai_users').update(payload).eq('id',id).eq('client_id',a.clientId).select('id').maybeSingle();
+      }else{
+        // A client_id identifies the browser/tenant, not an individual person.
+        // Always INSERT a new row for a new user; do not merge it into the current user.
+        const authUser=(await a.db.auth.getUser()).data?.user||null;
+        const row={...payload,id:authUser?.id&&false?authUser.id:crypto.randomUUID()};
+        result=await a.db.from('ai_users').insert(row).select('id').single();
       }
-      if(error)throw error;
-      try{await window.AinextSyncUser?.();}catch(_){ }
-      el('userModal')?.classList.add('hidden');await renderUsersDb();showToast?.('บันทึกข้อมูลผู้ใช้แล้ว','success');
+      if(result.error)throw result.error;
+      el('userModal')?.classList.add('hidden');await renderUsersDb();showToast?.(id?'แก้ไขข้อมูลผู้ใช้แล้ว':'เพิ่มผู้ใช้แล้ว','success');
     }catch(error){showToast?.('บันทึกผู้ใช้ไม่สำเร็จ: '+(error?.message||error),'error');}
   }
 
